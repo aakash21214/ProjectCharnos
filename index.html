@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Project Charnos - Video Edition</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* --- BACKGROUND VIDEO --- */
+        #bgVideo {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -2;
+        }
+
+        /* --- DARK OVERLAY --- */
+        #videoOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75); 
+            z-index: -1;
+        }
+
+        /* Canvas */
+        canvas {
+            display: block;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Hidden fonts loader */
+        .font-loader {
+            font-family: 'Nosifer';
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* --- TELEGRAM LINK (RESPONSIVE SIDEBAR) --- */
+        .telegram-btn {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            z-index: 100;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .telegram-icon {
+            width: 40px;
+            height: 40px;
+            fill: #ff0000;
+            filter: drop-shadow(0 0 5px #ff0000);
+            animation: pulse-glow 2s infinite;
+            transition: transform 0.3s;
+        }
+
+        .telegram-text {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            color: #ff0000;
+            font-family: 'Courier Prime', monospace;
+            font-size: 12px;
+            letter-spacing: 3px;
+            text-shadow: 0 0 5px #ff0000;
+            font-weight: bold;
+            opacity: 0.8;
+        }
+
+        .telegram-btn:hover {
+            transform: translateY(-50%) scale(1.1);
+        }
+        
+        .telegram-btn:hover .telegram-text {
+            opacity: 1;
+            text-shadow: 0 0 10px #ff0000;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { filter: drop-shadow(0 0 5px #ff0000); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 15px #ff0000); transform: scale(1.1); }
+        }
+
+        /* Mobile specific adjustments for button */
+        @media (max-width: 600px) {
+            .telegram-btn {
+                right: 10px;
+                transform: translateY(-50%) scale(0.8);
+            }
+            .telegram-btn:hover {
+                transform: translateY(-50%) scale(0.9);
+            }
+        }
+
+    </style>
+    <!-- Fonts Load -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nosifer&family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- 1. BACKGROUND VIDEO -->
+    <video id="bgVideo" src="vixdeo.mp4" autoplay loop muted playsinline></video>
+
+    <!-- 2. OVERLAY -->
+    <div id="videoOverlay"></div>
+
+    <!-- 3. TELEGRAM CHANNEL LINK -->
+    <a href="https://t.me/ProjectCharnos" target="_blank" class="telegram-btn">
+        <svg class="telegram-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.008-1.252-.241-1.865-.44-.751-.244-1.349-.374-1.297-.789.027-.216.324-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635.101-.002.322.023.465.139.119.096.152.227.167.331.017.091.038.304.023.472z"/>
+        </svg>
+        <span class="telegram-text">JOIN US</span>
+    </a>
+
+    <!-- Font Loader Tricks -->
+    <div class="font-loader" style="font-family: 'Nosifer'">.</div>
+    <div class="font-loader" style="font-family: 'Courier Prime'">.</div>
+
+    <!-- MAIN CANVAS -->
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- AUDIO ELEMENT -->
+    <audio id="bgAudio" src="madness_of_hackers.mp3"></audio>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const audio = document.getElementById('bgAudio');
+        const video = document.getElementById('bgVideo');
+
+        // --- LYRICS DATA ---
+        const lyricsData = [
+            { time: 2.0, text: "Welcome, my foolish adventurers." },
+            { time: 6.5, text: "Welcome to the madness called the Hacker House." },
+            { time: 12.0, text: "This house, this thing," },
+            { time: 15.5, text: "does not allow escape from the realm of nightmares." },
+            { time: 21.0, text: "You do not awake from this nightmare." },
+            { time: 26.0, text: "It follows you long after you've..." },
+        ];
+
+        // System Variables
+        let width, height;
+        let isStarted = false;
+        let isAudioPlaying = false;
+        let startTime = 0;
+        let audioStartTime = 0;
+        
+        // Assets
+        const reaperImg = new Image();
+        reaperImg.src = 'image_2025-11-28_13-51-11.png';
+        
+        let fontLoaded = false;
+        document.fonts.ready.then(() => { fontLoaded = true; });
+
+        // Animation Arrays
+        const particles = [];
+        const drips = [];
+        const activeCards = [];
+        
+        // Config
+        const config = {
+            text: "Project Charnos",
+            subText: "THE END IS NEAR"
+        };
+
+        // Resize Logic
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- CLICK TO START ---
+        window.addEventListener('click', (e) => {
+            // Prevent interaction if clicking the telegram link
+            if(e.target.closest('.telegram-btn')) return;
+
+            if (!isStarted) {
+                isStarted = true;
+                startTime = Date.now();
+                
+                if(video) video.play().catch(e => {});
+
+                // Audio Logic
+                setTimeout(() => {
+                    if(audio) {
+                        audio.play().catch(e => console.log("Audio error:", e));
+                        isAudioPlaying = true;
+                        audioStartTime = Date.now();
+                    }
+                }, 3000);
+            }
+        });
+
+        // --- CLASSES ---
+
+        class Particle {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 1; 
+                this.vy = Math.random() * 2 + 1; 
+                this.size = Math.random() * 2 + 0.5;
+                this.color = Math.random() > 0.5 ? '#8a0000' : '#330000';
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.y > height) this.reset();
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+
+        class Drip {
+            constructor(x, y) {
+                this.x = x; this.y = y;
+                this.width = Math.random() * 3 + 2;
+                this.height = 0;
+                this.maxHeight = Math.random() * 100 + 50;
+                this.speed = Math.random() * 2 + 2;
+                this.opacity = 0.9;
+                this.dead = false;
+            }
+            update() {
+                if (this.height < this.maxHeight) {
+                    this.height += this.speed;
+                } else {
+                    this.y += this.speed;
+                    this.opacity -= 0.02;
+                }
+                if (this.opacity <= 0 || this.y > height) this.dead = true;
+            }
+            draw() {
+                ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = '#8a0000';
+                ctx.beginPath();
+                ctx.rect(this.x, this.y, this.width, this.height);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.x + this.width/2, this.y + this.height, this.width, 0, Math.PI*2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        class LyricCard {
+            constructor(text) {
+                this.text = text;
+                this.visibleText = "";
+                this.charIndex = 0;
+                this.lastTypeTime = 0;
+                this.typeSpeed = 50; 
+                
+                this.opacity = 0;
+                this.isExiting = false;
+                
+                // Responsive Base Position
+                this.baseY = (height / 2) + (height < 600 ? 120 : 180); 
+                this.y = this.baseY + 30; 
+                this.targetY = this.baseY;
+                
+                // Responsive Width
+                this.width = Math.min(700, width * 0.9);
+                this.height = 60;
+            }
+
+            update() {
+                // Keep updating width on resize
+                this.width = Math.min(700, width * 0.9);
+                this.baseY = (height / 2) + (height < 600 ? 120 : 180);
+                if(!this.isExiting) this.targetY = this.baseY;
+
+                if (this.isExiting) {
+                    this.opacity -= 0.08; 
+                    this.y -= 3; 
+                    return;
+                }
+
+                if (this.opacity < 1) this.opacity += 0.05;
+                this.y += (this.targetY - this.y) * 0.1;
+
+                const now = Date.now();
+                if (this.charIndex < this.text.length && now - this.lastTypeTime > this.typeSpeed) {
+                    this.visibleText += this.text.charAt(this.charIndex);
+                    this.charIndex++;
+                    this.lastTypeTime = now;
+                }
+            }
+
+            draw() {
+                if (this.opacity <= 0) return;
+
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                
+                const x = (width - this.width) / 2;
+                ctx.fillStyle = "rgba(10, 0, 0, 0.85)"; 
+                ctx.strokeStyle = "#8a0000";
+                ctx.lineWidth = 2;
+                
+                // Box
+                ctx.beginPath();
+                ctx.roundRect(x, this.y, this.width, this.height, 10);
+                ctx.fill();
+                ctx.stroke();
+
+                // Dynamic Font Scaling
+                let fontSize = 20;
+                if(width < 500) fontSize = 16;
+                ctx.font = `${fontSize}px 'Courier Prime', monospace`;
+                
+                // Auto-scale font if text is too wide
+                let textWidth = ctx.measureText(this.visibleText).width;
+                while (textWidth > this.width - 40 && fontSize > 10) {
+                    fontSize--;
+                    ctx.font = `${fontSize}px 'Courier Prime', monospace`;
+                    textWidth = ctx.measureText(this.visibleText).width;
+                }
+
+                ctx.fillStyle = "#ffcccc";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(this.visibleText, width / 2, this.y + this.height/2);
+
+                // Cursor
+                if (this.charIndex < this.text.length && !this.isExiting) {
+                    if (Math.floor(Date.now() / 300) % 2 === 0) {
+                        ctx.fillRect((width/2) + (textWidth/2) + 2, this.y + this.height/2 - 10, 2, 20);
+                    }
+                }
+                ctx.restore();
+            }
+        }
+
+        // Init Particles
+        for (let i = 0; i < 100; i++) particles.push(new Particle());
+
+        // --- MAIN LOOP ---
+        let nextLyricIndexToSpawn = 0;
+
+        function loop() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Start Screen
+            if (!isStarted) {
+                ctx.fillStyle = "rgba(0,0,0,0.6)";
+                ctx.fillRect(0,0,width,height);
+
+                if(fontLoaded) {
+                    // Responsive Font for Start Screen
+                    const startFontSize = Math.min(width * 0.1, 40);
+                    ctx.font = `${startFontSize}px Nosifer`;
+                    ctx.fillStyle = "#ff0000";
+                    ctx.textAlign = "center";
+                    
+                    const alpha = (Math.sin(Date.now() / 300) + 1) / 2 * 0.5 + 0.5;
+                    ctx.globalAlpha = alpha;
+                    ctx.shadowBlur = 20; ctx.shadowColor = "red";
+                    ctx.fillText("CLICK TO START", width/2, height/2);
+                    ctx.shadowBlur = 0; ctx.globalAlpha = 1.0;
+                }
+                requestAnimationFrame(loop);
+                return;
+            }
+
+            const now = Date.now();
+            const elapsed = now - startTime;
+            const centerY = height / 2;
+            const centerX = width / 2;
+
+            // 2. Draw Particles
+            particles.forEach(p => { p.update(); p.draw(); });
+
+            // 3. Draw Reaper (Responsive)
+            let reaperAlpha = Math.min(1, Math.max(0, (elapsed) / 3000));
+            let reaperScale = Math.min(1, 0.5 + ((elapsed) / 3000) * 0.5);
+            let floatY = Math.sin(elapsed / 1000) * 15; 
+
+            if (elapsed > 0) {
+                ctx.save();
+                ctx.globalAlpha = reaperAlpha;
+                
+                // Responsive Size Calculation
+                const reaperSize = Math.min(width * 0.8, 300);
+                const offsetY = height < 600 ? 100 : 150; // Move up less on small screens
+
+                ctx.translate(centerX, centerY - offsetY + floatY); 
+                ctx.scale(reaperScale, reaperScale);
+                try {
+                    ctx.shadowBlur = 30;
+                    ctx.shadowColor = "rgba(139, 0, 0, 0.6)";
+                    // Draw image centered based on calculated size
+                    ctx.drawImage(reaperImg, -reaperSize/2, -reaperSize/2, reaperSize, reaperSize);
+                } catch(e) {}
+                ctx.restore();
+            }
+
+            // 4. Draw Main Title (Responsive)
+            if (elapsed > 1500) {
+                const textProgress = Math.min(1, (elapsed - 1500) / 2000);
+                ctx.save();
+                ctx.globalAlpha = textProgress;
+                
+                const pulse = Math.sin(elapsed / 500);
+                const r = 138 + pulse * 20; 
+                ctx.fillStyle = `rgb(${r}, 0, 0)`;
+                ctx.shadowBlur = 20 + pulse * 10;
+                ctx.shadowColor = `rgb(255, 0, 0)`;
+                
+                // Fully Responsive Font Size with Mobile Cap
+                let fontSize = Math.min(width * 0.13, 80); 
+                // Cap specifically for mobile
+                if(width < 600) {
+                    fontSize = Math.min(width * 0.1, 40);
+                }
+
+                ctx.font = `${fontSize}px Nosifer`;
+                ctx.textAlign = "center";
+                
+                // Position logic based on screen height
+                let titleOffset = height < 600 ? 50 : 100;
+                let textY = centerY + titleOffset - (textProgress * 20); 
+                
+                ctx.fillText(config.text, centerX, textY);
+                ctx.restore();
+
+                // Blood Drips
+                if (Math.random() < 0.1) {
+                    const textWidth = ctx.measureText(config.text).width;
+                    const startX = centerX - (textWidth/2) + Math.random() * textWidth;
+                    drips.push(new Drip(startX, textY + 5)); 
+                }
+            }
+
+            // 5. Draw Drips
+            for (let i = drips.length - 1; i >= 0; i--) {
+                drips[i].update();
+                drips[i].draw();
+                if (drips[i].dead) drips.splice(i, 1);
+            }
+
+            // 6. LYRICS MANAGER
+            if (isAudioPlaying) {
+                let currentTime = 0;
+                if (audio) {
+                    currentTime = audio.currentTime;
+                } else {
+                    currentTime = (Date.now() - audioStartTime) / 1000;
+                }
+
+                if (nextLyricIndexToSpawn < lyricsData.length) {
+                    const nextLyric = lyricsData[nextLyricIndexToSpawn];
+                    if (currentTime >= nextLyric.time) {
+                        activeCards.forEach(card => card.isExiting = true);
+                        activeCards.push(new LyricCard(nextLyric.text));
+                        nextLyricIndexToSpawn++;
+                    }
+                }
+
+                for (let i = activeCards.length - 1; i >= 0; i--) {
+                    const card = activeCards[i];
+                    card.update();
+                    card.draw();
+                    if (card.opacity <= 0 && card.isExiting) {
+                        activeCards.splice(i, 1); 
+                    }
+                }
+            } else if (isStarted && elapsed > 3000 && elapsed < 6000) {
+                ctx.save();
+                ctx.fillStyle = "red";
+                // Responsive Loading Text
+                let fontSize = Math.min(width * 0.05, 20);
+                ctx.font = `${fontSize}px 'Courier Prime'`;
+                ctx.textAlign = "center";
+                ctx.fillText("ESTABLISHING CONNECTION...", centerX, centerY + (height < 600 ? 150 : 200));
+                ctx.restore();
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+
+    </script>
+</body>
+</html>
